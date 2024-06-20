@@ -7,6 +7,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const memberList = document.getElementById('memberList');
     const loanList = document.getElementById('loanList');
 
+    const editBookModal = new bootstrap.Modal(document.getElementById('editBookModal'));
+    const editMemberModal = new bootstrap.Modal(document.getElementById('editMemberModal'));
+
+    const saveBookChangesButton = document.getElementById('saveBookChanges');
+    const saveMemberChangesButton = document.getElementById('saveMemberChanges');
+
     function showAlert(message, type) {
         const alert = document.createElement('div');
         alert.className = `alert alert-${type}`;
@@ -15,7 +21,6 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => alert.remove(), 3000);
     }
 
-    // Helper function to handle fetch errors
     async function handleFetch(response) {
         if (!response.ok) {
             const errorText = await response.text();
@@ -24,7 +29,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return response.json();
     }
 
-    // Event listener for book form
     bookForm.addEventListener('submit', function(e) {
         e.preventDefault();
         const title = document.getElementById('bookTitle').value;
@@ -50,7 +54,6 @@ document.addEventListener('DOMContentLoaded', function() {
         bookForm.reset();
     });
 
-    // Event listener for member form
     memberForm.addEventListener('submit', function(e) {
         e.preventDefault();
         const name = document.getElementById('memberName').value;
@@ -76,7 +79,6 @@ document.addEventListener('DOMContentLoaded', function() {
         memberForm.reset();
     });
 
-    // Event listener for loan form
     loanForm.addEventListener('submit', function(e) {
         e.preventDefault();
         const bookId = document.getElementById('loanBookId').value;
@@ -106,12 +108,27 @@ document.addEventListener('DOMContentLoaded', function() {
         loanForm.reset();
     });
 
-    // Function to handle editing a book
     function editBook(id) {
-        const newTitle = prompt("Enter new title:");
-        const newAuthor = prompt("Enter new author:");
+        fetch(`/books/${id}`)
+            .then(handleFetch)
+            .then(book => {
+                document.getElementById('editBookTitle').value = book.title;
+                document.getElementById('editBookAuthor').value = book.author;
+                document.getElementById('editBookId').value = book.id;
+                editBookModal.show();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert(error.message, 'danger');
+            });
+    }
 
-        const updatedBook = { id, title: newTitle, author: newAuthor };
+    saveBookChangesButton.addEventListener('click', function() {
+        const id = document.getElementById('editBookId').value;
+        const title = document.getElementById('editBookTitle').value;
+        const author = document.getElementById('editBookAuthor').value;
+
+        const updatedBook = { id, title, author };
 
         fetch(`/books/${id}`, {
             method: 'PUT',
@@ -122,14 +139,53 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             updateBookInList(data);
             showAlert('Book updated successfully', 'success');
+            editBookModal.hide();
         })
         .catch(error => {
             console.error('Error:', error);
             showAlert(error.message, 'danger');
         });
+    });
+
+    function editMember(id) {
+        fetch(`/members/${id}`)
+            .then(handleFetch)
+            .then(member => {
+                document.getElementById('editMemberName').value = member.name;
+                document.getElementById('editMemberEmail').value = member.email;
+                document.getElementById('editMemberId').value = member.id;
+                editMemberModal.show();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert(error.message, 'danger');
+            });
     }
 
-    // Function to handle deleting a book
+    saveMemberChangesButton.addEventListener('click', function() {
+        const id = document.getElementById('editMemberId').value;
+        const name = document.getElementById('editMemberName').value;
+        const email = document.getElementById('editMemberEmail').value;
+
+        const updatedMember = { id, name, email };
+
+        fetch(`/members/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedMember)
+        })
+        .then(handleFetch)
+        .then(data => {
+            updateMemberInList(data);
+            showAlert('Member updated successfully', 'success');
+            editMemberModal.hide();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert(error.message, 'danger');
+        });
+    });
+
     function deleteBook(id) {
         fetch(`/books/${id}`, {
             method: 'DELETE'
@@ -148,30 +204,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Function to handle editing a member
-    function editMember(id) {
-        const newName = prompt("Enter new name:");
-        const newEmail = prompt("Enter new email:");
-
-        const updatedMember = { id, name: newName, email: newEmail };
-
-        fetch(`/members/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatedMember)
-        })
-        .then(handleFetch)
-        .then(data => {
-            updateMemberInList(data);
-            showAlert('Member updated successfully', 'success');
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showAlert(error.message, 'danger');
-        });
-    }
-
-    // Function to handle deleting a member
     function deleteMember(id) {
         fetch(`/members/${id}`, {
             method: 'DELETE'
@@ -190,7 +222,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Function to handle returning a book
     function returnBook(id) {
         fetch(`/loans/return/${id}`, {
             method: 'PUT'
@@ -206,7 +237,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Helper functions to update the UI
     function addBookToList(book) {
         const li = document.createElement('li');
         li.className = 'list-group-item d-flex justify-content-between align-items-center';
@@ -291,7 +321,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Event delegation for edit and delete book
     bookList.addEventListener('click', function(e) {
         const id = e.target.closest('li').dataset.id;
         if (e.target.classList.contains('edit-book')) {
@@ -303,7 +332,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Event delegation for edit and delete member
     memberList.addEventListener('click', function(e) {
         const id = e.target.closest('li').dataset.id;
         if (e.target.classList.contains('edit-member')) {
@@ -315,7 +343,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Event delegation for return book
     loanList.addEventListener('click', function(e) {
         const id = e.target.closest('li').dataset.id;
         if (e.target.classList.contains('return-loan')) {
@@ -323,7 +350,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Function to load books
     function loadBooks() {
         fetch('/books')
         .then(handleFetch)
@@ -333,7 +359,6 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => console.error('Error:', error));
     }
 
-    // Function to load members
     function loadMembers() {
         fetch('/members')
         .then(handleFetch)
@@ -343,7 +368,6 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => console.error('Error:', error));
     }
 
-    // Function to load loans
     function loadLoans() {
         fetch('/loans')
         .then(handleFetch)
@@ -352,7 +376,6 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => console.error('Error:', error));
     }
-
     // Initial load
     loadBooks();
     loadMembers();
